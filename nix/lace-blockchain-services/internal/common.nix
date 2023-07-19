@@ -10,6 +10,8 @@ in rec {
 
   prettyName = "Lace Blockchain Services";
 
+  laceVersion = "0.1.0";
+
   cardanoWorldFlake = (flake-compat { src = inputs.cardano-world; }).defaultNix;
 
   networkConfigs = let
