@@ -1,0 +1,99 @@
+diff --git a/server/cabal.project b/server/cabal.project
+index 56f9f066c..9440b177f 100644
+--- a/server/cabal.project
++++ b/server/cabal.project
+@@ -30,6 +30,7 @@ constraints:
+ 
+ allow-newer:
+   *:formatting
++  , katip:Win32
+ 
+ packages:
+   ./
+diff --git a/server/ogmios.cabal b/server/ogmios.cabal
+index b6fa3837a..fee8a1276 100644
+--- a/server/ogmios.cabal
++++ b/server/ogmios.cabal
+@@ -31,6 +31,10 @@ flag production
+   manual: True
+   default: False
+ 
++common maybe-unix
++  if !os(windows)
++    build-depends:      unix
++
+ library
+   exposed-modules:
+       Ogmios
+@@ -133,6 +137,8 @@ library
+       TypeSynonymInstances
+       ViewPatterns
+   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -Wunused-packages
++  import:
++      maybe-unix
+   build-depends:
+       aeson
+     , array
+@@ -213,7 +219,6 @@ library
+     , time-manager
+     , transformers
+     , typed-protocols
+-    , unix
+     , vector
+     , wai
+     , wai-websockets
+diff --git a/server/src/Ogmios.hs b/server/src/Ogmios.hs
+index d87b8d11a..aaec6b03c 100644
+--- a/server/src/Ogmios.hs
++++ b/server/src/Ogmios.hs
+@@ -2,6 +2,7 @@
+ --  License, v. 2.0. If a copy of the MPL was not distributed with this
+ --  file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
++{-# LANGUAGE CPP #-}
+ {-# LANGUAGE DerivingVia #-}
+ 
+ -- NOTE: necessary for the 'Generic' instance on the Env data-family.
+@@ -96,6 +97,7 @@ import Ogmios.Options
+ import Ogmios.Version
+     ( version
+     )
++#ifdef UNIX
+ import System.Posix.Signals
+     ( Handler (..)
+     , installHandler
+@@ -103,6 +105,7 @@ import System.Posix.Signals
+     , raiseSignal
+     , softwareTermination
+     )
++#endif
+ 
+ --
+ -- App
+@@ -137,9 +140,13 @@ application tracers = hijackSigTerm >> withDebouncer _10s (\debouncer -> do
+ -- This function install handlers for SIGTERM and turn them into SIGINT.
+ hijackSigTerm :: App ()
+ hijackSigTerm =
++#ifdef UNIX
+     liftIO $ void (installHandler softwareTermination handler empty)
+   where
+     handler = CatchOnce (raiseSignal keyboardSignal)
++#else
++    pure ()
++#endif
+ 
+ --
+ -- Environment
+diff --git a/server/src/Ogmios/Options.hs b/server/src/Ogmios/Options.hs
+index e08e86a42..4c0743da1 100644
+--- a/server/src/Ogmios/Options.hs
++++ b/server/src/Ogmios/Options.hs
+@@ -91,7 +91,7 @@ import Options.Applicative.Help.Pretty
+ import Safe
+     ( readMay
+     )
+-import System.FilePath.Posix
++import System.FilePath
+     ( replaceFileName
+     )
+ 
