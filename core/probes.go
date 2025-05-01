@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -40,16 +41,36 @@ func probeHttp200(url string, timeout time.Duration) error {
 }
 
 func probeHttpFor(acceptedStatusCodes []int, url string, timeout time.Duration) error {
-	httpClient := http.Client{Timeout: timeout}
-	resp, err := httpClient.Get(url)
-	if err == nil {
-		defer resp.Body.Close()
-		for _, code := range acceptedStatusCodes {
-			if resp.StatusCode == code {
-				return nil
-			}
-		}
-		return fmt.Errorf("got an unexpected response: %d for %s, expected one of %v", resp.StatusCode, url, acceptedStatusCodes)
-	}
+	_, err := probeHttpWithBodyFor(acceptedStatusCodes, url, timeout, false)
 	return err
+}
+
+func probeHttpWithBodyFor(acceptedStatusCodes []int, url string, timeout time.Duration, withBody bool) (string, error) {
+	httpClient := http.Client{Timeout: timeout}
+
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body := ""
+	if withBody {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", fmt.Errorf("failed to read response body: %v", err)
+		}
+		body = string(bodyBytes)
+	}
+
+	for _, code := range acceptedStatusCodes {
+		if resp.StatusCode == code {
+			return body, nil
+		}
+	}
+
+	return body, fmt.Errorf(
+		"got an unexpected response code: %d for %s, expected one of %v",
+		resp.StatusCode, url, acceptedStatusCodes,
+	)
 }

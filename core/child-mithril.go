@@ -18,11 +18,11 @@ import (
 
 	"github.com/sqweek/dialog"
 
-	"iog.io/blockchain-services/appconfig"
-	"iog.io/blockchain-services/constants"
-	"iog.io/blockchain-services/ourpaths"
-	"iog.io/blockchain-services/mainthread"
-	"iog.io/blockchain-services/ui"
+	"blockfrost.io/blockfrost-platform-desktop/appconfig"
+	"blockfrost.io/blockfrost-platform-desktop/constants"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/mainthread"
+	"blockfrost.io/blockfrost-platform-desktop/ui"
 )
 
 func childMithril(appConfig appconfig.AppConfig) func(SharedState, chan<- StatusAndUrl) ManagedChild { return func(shared SharedState, statusCh chan<- StatusAndUrl) ManagedChild {

@@ -12,6 +12,11 @@
     cardano-js-sdk.url = "github:input-output-hk/cardano-js-sdk/@cardano-sdk/cardano-services@0.35.10";
     cardano-js-sdk.flake = false; # we patch it & to prevent lockfile explosion
 
+    blockfrost-platform = {
+      url = "github:blockfrost/blockfrost-platform/pull/296/head"; # fetch `/addresses/{addr}/utxos` from the ledger state
+      flake = false; # to prevent lockfile explosion
+    };
+
     ogmios = {
       url = "https://github.com/CardanoSolutions/ogmios.git";
       ref = "refs/tags/v6.11.2";

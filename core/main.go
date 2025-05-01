@@ -14,14 +14,14 @@ import (
 	"encoding/json"
 	"net/http"
 
-	t "iog.io/blockchain-services/types"
-	"iog.io/blockchain-services/constants"
-	"iog.io/blockchain-services/ourpaths"
-	"iog.io/blockchain-services/appconfig"
-	"iog.io/blockchain-services/httpapi"
-	"iog.io/blockchain-services/ui"
-	"iog.io/blockchain-services/mithrilcache"
-	"iog.io/blockchain-services/mainthread"
+	t "blockfrost.io/blockfrost-platform-desktop/types"
+	"blockfrost.io/blockfrost-platform-desktop/constants"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/appconfig"
+	"blockfrost.io/blockfrost-platform-desktop/httpapi"
+	"blockfrost.io/blockfrost-platform-desktop/ui"
+	"blockfrost.io/blockfrost-platform-desktop/mithrilcache"
+	"blockfrost.io/blockfrost-platform-desktop/mainthread"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -137,14 +137,14 @@ func main() {
 		}()
 
 		serviceUpdateFromManager <- t.ServiceStatus {
-			ServiceName: "blockchain-services",
+			ServiceName: "blockfrost-platform-desktop",
 			Status: "listening",
 			Progress: -1,
 			TaskSize: -1,
 			SecondsLeft: -1,
 			Url: fmt.Sprintf("http://127.0.0.1:%d", appConfig.ApiPort),
-			Version: constants.BlockchainServicesVersion,
-			Revision: constants.BlockchainServicesRevision,
+			Version: constants.BlockfrostPlatformDesktopVersion,
+			Revision: constants.BlockfrostPlatformDesktopRevision,
 		}
 
 		initiateShutdownCh := make(chan struct{}, 16)
@@ -209,7 +209,7 @@ func main() {
 	}
 
 	wailsApp := wails3_application.New(wails3_application.Options{
-		Name:        "blockchain-services",
+		Name:        "blockfrost-platform-desktop",
 		Description: "Full-node headless wallet backend with standardized API",
 		Services: []wails3_application.Service{},
 		Assets: wails3_application.AssetOptions{
@@ -238,7 +238,7 @@ func main() {
 		},
 		Linux: wails3_application.LinuxOptions{
 			DisableQuitOnLastWindowClosed: true,
-			ProgramName: "blockchain-services",
+			ProgramName: "blockfrost-platform-desktop",
 		},
 	})
 
@@ -254,7 +254,7 @@ func main() {
 				}
 			} else {
 				currentlyOpenWindow = wailsApp.NewWebviewWindowWithOptions(wails3_application.WebviewWindowOptions{
-					Title: "blockchain-services",
+					Title: "blockfrost-platform-desktop",
 					Hidden: false,
 					ShouldClose: func(window *wails3_application.WebviewWindow) bool {
 						// window.SetURL("about:blank")  // decrease resource usage, a temporary solution

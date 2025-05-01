@@ -8,11 +8,11 @@ let
 in rec {
   common = import ./common.nix { inherit inputs targetSystem; };
 
-  package = blockchain-services;
+  package = blockfrost-platform-desktop;
 
   installer = selfExtractingArchive;
 
-  inherit (common) cardano-node ogmios cardano-submit-api;
+  inherit (common) cardano-node ogmios cardano-submit-api blockfrost-platform;
 
   cardano-js-sdk = (common.flake-compat {
     src = inputs.cardano-js-sdk;
@@ -36,10 +36,10 @@ in rec {
     "WebKitWebProcess" = "${webkit2gtk}/libexec/webkit2gtk-4.1/WebKitWebProcess";
   };
 
-  blockchain-services-exe = pkgs.buildGoModule rec {
-    name = "blockchain-services";
+  blockfrost-platform-desktop-exe = pkgs.buildGoModule rec {
+    name = "blockfrost-platform-desktop";
     src = common.coreSrc;
-    vendorHash = common.blockchain-services-exe-vendorHash;
+    vendorHash = common.blockfrost-platform-desktop-exe-vendorHash;
     nativeBuildInputs = with pkgs; [ pkg-config ];
     buildInputs = [ webkit2gtk ] ++ (with pkgs; [
       (libayatana-appindicator-gtk3.override {
@@ -58,7 +58,7 @@ in rec {
       # go:embed forbids symlinks, so:
       cp -R ${ui.dist} ./web-ui
     '';
-    meta.mainProgram = "blockchain-services";
+    meta.mainProgram = "blockfrost-platform-desktop";
   };
 
   go-assets = pkgs.runCommand "go-assets" {
@@ -165,7 +165,7 @@ in rec {
   testPostgres = pkgs.writeShellScriptBin "test-postgres" ''
     set -euo pipefail
 
-    export PGDATA=$HOME/.local/share/blockchain-services/test-postgres
+    export PGDATA=$HOME/.local/share/blockfrost-platform-desktop/test-postgres
     if [ -e "$PGDATA" ] ; then rm -r "$PGDATA" ; fi
     mkdir -p "$PGDATA"
 
@@ -175,7 +175,7 @@ in rec {
     cat >"$PGDATA/postgresql.conf" <<EOF
   listen_addresses = 'localhost'
   port = 5432
-  unix_socket_directories = '$HOME/.local/share/blockchain-services/test-postgres'
+  unix_socket_directories = '$HOME/.local/share/blockfrost-platform-desktop/test-postgres'
   max_connections = 100
   fsync = on
   logging_collector = off
@@ -196,7 +196,7 @@ in rec {
     exec ${postgresBundle}/bin/postgres
   '';
 
-  # $dir is $out/libexec/blockchain-services/
+  # $dir is $out/libexec/blockfrost-platform-desktop/
   # TODO: move WEBKIT_EXEC_PATH here, but then `nix run -L` doesn’t work: Couldn't open libGLESv2.so.2: /nix/store/eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee-libGL-1.7.0/lib/libGLESv2.so.2: cannot open shared object file: No such file or directory
   extraBSInit = ''
     # Prevent a Gtk3 segfault, especially with WebKit2 this cannot be done from within the executable:
@@ -204,36 +204,40 @@ in rec {
     # Prepend our libexec/xclip to PATH – for xclip on Linux, which is not installed on all distributions
     export PATH="$(realpath "$dir/../xclip"):$PATH"
     # WebKit2 data directories:
-    export WEBKIT_DEFAULT_CACHE_DIR="$HOME"/.local/share/blockchain-services/webkit2gtk
-    export WEBKIT_DEFAULT_DATA_DIR="$HOME"/.local/share/blockchain-services/webkit2gtk
+    export WEBKIT_DEFAULT_CACHE_DIR="$HOME"/.local/share/blockfrost-platform-desktop/webkit2gtk
+    export WEBKIT_DEFAULT_DATA_DIR="$HOME"/.local/share/blockfrost-platform-desktop/webkit2gtk
   '';
 
-  blockchain-services = pkgs.runCommand "blockchain-services" {
-    meta.mainProgram = blockchain-services-exe.name;
+  blockfrost-platform-desktop = pkgs.runCommand "blockfrost-platform-desktop" {
+    meta.mainProgram = blockfrost-platform-desktop-exe.name;
   } ''
-    mkdir -p $out/bin $out/libexec/blockchain-services
-    cp ${blockchain-services-exe}/bin/blockchain-services $out/libexec/blockchain-services/.blockchain-services-wrapped
-    cp ${pkgs.writeScript "blockchain-services-non-bundle" ''
+    mkdir -p $out/bin $out/libexec/blockfrost-platform-desktop
+    cp ${blockfrost-platform-desktop-exe}/bin/blockfrost-platform-desktop $out/libexec/blockfrost-platform-desktop/.blockfrost-platform-desktop-wrapped
+    cp ${pkgs.writeScript "blockfrost-platform-desktop-non-bundle" ''
       #!/bin/sh
       set -x
       set -eu
       dir="$(cd -- "$(dirname "$(realpath "$0")")" >/dev/null 2>&1 ; pwd -P)"
       ${extraBSInit}
-      exec "$dir"/.blockchain-services-wrapped "$@"
-    ''} $out/libexec/blockchain-services/blockchain-services
-    ln -s $out/libexec/blockchain-services/* $out/bin/
+      exec "$dir"/.blockfrost-platform-desktop-wrapped "$@"
+    ''} $out/libexec/blockfrost-platform-desktop/blockfrost-platform-desktop
+    ln -s $out/libexec/blockfrost-platform-desktop/* $out/bin/
 
-    mkdir -p $out/libexec
+    mkdir -p $out/{libexec,share}
     ln -s ${mkBundle { "cardano-node"   = lib.getExe cardano-node;
                        "cardano-submit-api" = lib.getExe cardano-submit-api;}} $out/libexec/cardano-node
-    ln -s ${mkBundle { "ogmios"         = lib.getExe ogmios;                }} $out/libexec/ogmios
+    ln -s ${blockfrost-platform                                              } $out/libexec/blockfrost-platform
     ln -s ${mkBundle { "mithril-client" = lib.getExe mithril-client;        }} $out/libexec/mithril-client
-    ln -s ${mkBundle { "node"           = lib.getExe nodejs-no-snapshot;    }} $out/libexec/nodejs
     ln -s ${mkBundle { "clip"           = lib.getExe pkgs.xclip;            }} $out/libexec/xclip
-    ln -s ${postgresBundle                                                   } $out/libexec/postgres
 
-    mkdir -p $out/share
-    ln -s ${cardano-js-sdk}/libexec/incl $out/share/cardano-js-sdk
+    ${lib.optionalString (!common.blockfrostPlatformOnly) ''
+      ln -s ${mkBundle { "ogmios"         = lib.getExe ogmios;                }} $out/libexec/ogmios
+      ln -s ${mkBundle { "node"           = lib.getExe nodejs-no-snapshot;    }} $out/libexec/nodejs
+      ln -s ${postgresBundle                                                   } $out/libexec/postgres
+
+      ln -s ${cardano-js-sdk}/libexec/incl $out/share/cardano-js-sdk
+    ''}
+
     ln -s ${pkgs.xkeyboard_config}/share/X11/xkb $out/share/xkb
     ln -s ${common.networkConfigs} $out/share/cardano-node-config
     ln -s ${common.swagger-ui} $out/share/swagger-ui
@@ -241,40 +245,40 @@ in rec {
   '';
 
   # XXX: this has no dependency on /nix/store on the target machine
-  blockchain-services-bundle = let
-    unbundled = blockchain-services;
-  in pkgs.runCommand "blockchain-services-bundle" {} ''
+  blockfrost-platform-desktop-bundle = let
+    unbundled = blockfrost-platform-desktop;
+  in pkgs.runCommand "blockfrost-platform-desktop-bundle" {} ''
     mkdir -p $out
     cp -r --dereference ${unbundled}/libexec $out/
     chmod -R +w $out/libexec
     cp -r --dereference ${webkit2Bundle} $out/libexec/webkit2
-    rm -r $out/libexec/blockchain-services
+    rm -r $out/libexec/blockfrost-platform-desktop
     cp -r --dereference ${mkBundle {
-      "blockchain-services" = (lib.getExe blockchain-services-exe);
+      "blockfrost-platform-desktop" = (lib.getExe blockfrost-platform-desktop-exe);
       extraInit = ''
         ${extraBSInit}
         # Use the bundled WebKit2:
         export WEBKIT_EXEC_PATH="$(realpath "$dir/../webkit2")"
       '';
-    }} $out/libexec/blockchain-services
+    }} $out/libexec/blockfrost-platform-desktop
     mkdir -p $out/bin
-    ln -s ../libexec/blockchain-services/blockchain-services $out/bin/
+    ln -s ../libexec/blockfrost-platform-desktop/blockfrost-platform-desktop $out/bin/
     cp -r --dereference ${unbundled}/share $out/ || true  # FIXME: unsafe! broken node_modules symlinks
     chmod -R +w $out/share
-    cp $(find ${desktopItem} -type f -name '*.desktop') $out/share/blockchain-services.desktop
+    cp $(find ${desktopItem} -type f -name '*.desktop') $out/share/blockfrost-platform-desktop.desktop
     ${pkgs.imagemagick}/bin/magick -background none -size 1024x1024 \
       ${builtins.path { path = common.coreSrc + "/cardano.svg"; }} $out/share/icon_large.png
   '';
 
   desktopItem = pkgs.makeDesktopItem {
-    name = "blockchain-services";
+    name = "blockfrost-platform-desktop";
     exec = "INSERT_PATH_HERE";
     desktopName = common.prettyName;
     genericName = "Cardano Crypto-Currency Backend";
-    comment = "Run Blockchain Services locally";
+    comment = "Run Blockfrost Platform Desktop locally";
     categories = [ "Network" ];
     icon = "INSERT_ICON_PATH_HERE";
-    startupWMClass = "blockchain-services";
+    startupWMClass = "blockfrost-platform-desktop";
   };
 
   # XXX: Be *super careful* changing this!!! You WILL DELETE user data if you make a mistake. Ping @michalrus
@@ -283,7 +287,7 @@ in rec {
       "@UGLY_NAME@"
       "@PRETTY_NAME@"
     ] [
-      (lib.escapeShellArg "blockchain-services")
+      (lib.escapeShellArg "blockfrost-platform-desktop")
       (lib.escapeShellArg common.prettyName)
     ] (__readFile ./linux-self-extracting-archive.sh);
     script = __replaceStrings ["1010101010"] [(toString (1000000000 + __stringLength scriptTemplate))] scriptTemplate;
@@ -291,15 +295,15 @@ in rec {
       if inputs.self ? shortRev
       then builtins.substring 0 9 inputs.self.rev
       else "dirty";
-  in pkgs.runCommand "blockchain-services-installer" {
+  in pkgs.runCommand "blockfrost-platform-desktop-installer" {
     inherit script;
     passAsFile = [ "script" ];
   } ''
     mkdir -p $out
-    target=$out/blockchain-services-${common.ourVersion}-${revShort}-${targetSystem}.bin
+    target=$out/blockfrost-platform-desktop-${common.ourVersion}-${revShort}-${targetSystem}.bin
     cat $scriptPath >$target
     echo 'Compressing (xz)...'
-    tar -cJ -C ${blockchain-services-bundle} . >>$target
+    tar -cJ -C ${blockfrost-platform-desktop-bundle} . >>$target
     chmod +x $target
 
     # Make it downloadable from Hydra:

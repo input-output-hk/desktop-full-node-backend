@@ -7,9 +7,9 @@ let
   inherit (pkgs) lib;
 in rec {
   common = import ./common.nix { inherit inputs targetSystem; };
-  package = blockchain-services;
+  package = blockfrost-platform-desktop;
   installer = unsignedInstaller;
-  inherit (common) cardano-node ogmios cardano-submit-api;
+  inherit (common) cardano-node ogmios cardano-submit-api blockfrost-platform;
 
   patchedGo = pkgs.go.overrideAttrs (drv: {
     patches = (drv.patches or []) ++ [
@@ -22,12 +22,12 @@ in rec {
   #   • having a MinGW-w64 stdenv (for the C/C++ parts),
   #   • Linux Go (but instructed to cross-compile),
   #   • and taking goModules (vendor) from the Linux derivation – these are only sources
-  blockchain-services-exe = let
+  blockfrost-platform-desktop-exe = let
     noConsoleWindow = true;
     go = patchedGo;
-    goModules = inputs.self.internal.x86_64-linux.blockchain-services-exe.goModules;
+    goModules = inputs.self.internal.x86_64-linux.blockfrost-platform-desktop-exe.goModules;
   in pkgs.pkgsCross.mingwW64.stdenv.mkDerivation {
-    name = "blockchain-services";
+    name = "blockfrost-platform-desktop";
     src = common.coreSrc;
     GOPROXY = "off";
     GOSUMDB = "off";
@@ -75,7 +75,7 @@ in rec {
     '';
     installPhase = ''
       mkdir -p $out
-      mv blockchain-services.exe $out/
+      mv blockfrost-platform-desktop.exe $out/
     '';
     passthru = { inherit go goModules; };
   };
@@ -136,7 +136,7 @@ in rec {
   # FIXME: This is terrible, we have to do it better, but I can’t get the Go cross-compiler
   # to embed Windows resources properly in the EXE. The file increases in size, but is still
   # missing something. I have no time to investigate now, so let’s have this dirty hack.
-  blockchain-services-exe-with-icon = pkgs.runCommand "blockchain-services-with-icon" {
+  blockfrost-platform-desktop-exe-with-icon = pkgs.runCommand "blockfrost-platform-desktop-with-icon" {
     buildInputs = with cardano-js-sdk.fresherPkgs; [
       wineWowPackages.stableFull
       winetricks samba /*samba for bin/ntlm_auth*/
@@ -152,7 +152,7 @@ in rec {
         set +e
         wine ${resourceHacker}/ResourceHacker.exe \
           -log res-hack.log \
-          -open "$(winepath -w ${blockchain-services-exe}/*.exe)" \
+          -open "$(winepath -w ${blockfrost-platform-desktop-exe}/*.exe)" \
           -save with-icon.exe \
           -action addoverwrite \
           -res "$(winepath -w ${icon})" \
@@ -166,7 +166,7 @@ in rec {
         fi
       ''}
     mkdir -p $out
-    mv with-icon.exe $out/blockchain-services.exe
+    mv with-icon.exe $out/blockfrost-platform-desktop.exe
   '';
 
   go-rsrc = pkgs.buildGoModule rec {
@@ -192,20 +192,32 @@ in rec {
     doCheck = false;
   };
 
-  blockchain-services = mkPackage { withJS = true; };
+  blockfrost-platform-desktop = mkPackage { withJS = true; };
 
-  mkPackage = { withJS }: pkgs.runCommand "blockchain-services" {} ''
+  mkPackage = { withJS }: pkgs.runCommand "blockfrost-platform-desktop" {} ''
     mkdir -p $out/libexec
-    cp -Lr ${blockchain-services-exe-with-icon}/* $out/
+    cp -Lr ${blockfrost-platform-desktop-exe-with-icon}/* $out/
 
     mkdir -p $out/libexec/mithril-client
     cp -L ${mithril-client}/*.{exe,dll} $out/libexec/mithril-client/
 
-    mkdir -p $out/libexec/ogmios
-    cp -L ${ogmios}/bin/*.{exe,dll} $out/libexec/ogmios/
+    mkdir -p $out/libexec/blockfrost-platform
+    cp -L ${blockfrost-platform}/*.{exe,dll} $out/libexec/blockfrost-platform/
 
-    mkdir -p $out/libexec/nodejs
-    cp -L ${cardano-js-sdk.target.nodejs}/node.exe $out/libexec/nodejs/
+    ${lib.optionalString (!common.blockfrostPlatformOnly) ''
+      mkdir -p $out/libexec/ogmios
+      cp -L ${ogmios}/bin/*.{exe,dll} $out/libexec/ogmios/
+
+      mkdir -p $out/libexec/nodejs
+      cp -L ${cardano-js-sdk.target.nodejs}/node.exe $out/libexec/nodejs/
+
+      mkdir -p $out/libexec/postgres
+      cp -Lr ${postgresUnpacked}/{bin,lib,share,*license*.txt} $out/libexec/postgres/
+
+      ${if !withJS then "" else ''
+        cp -Lr ${cardano-js-sdk.ourPackage} $out/cardano-js-sdk
+      ''}
+    ''}
 
     mkdir -p $out/libexec/cardano-node
     cp -Lf ${cardano-node}/bin/*.{exe,dll} $out/libexec/cardano-node/
@@ -217,25 +229,19 @@ in rec {
     mkdir -p $out/libexec/mksymlink
     cp -Lf ${mksymlink}/*.exe $out/libexec/mksymlink/
 
-    mkdir -p $out/libexec/postgres
-    cp -Lr ${postgresUnpacked}/{bin,lib,share,*license*.txt} $out/libexec/postgres/
-
     mkdir -p $out/libexec/ourwebview2/
     cp -Lr ${WebView2}/. $out/libexec/webview2/
 
     cp -Lr ${common.networkConfigs} $out/cardano-node-config
     cp -Lr ${common.swagger-ui} $out/swagger-ui
     cp -Lr ${ui.dist} $out/ui
-    ${if !withJS then "" else ''
-      cp -Lr ${cardano-js-sdk.ourPackage} $out/cardano-js-sdk
-    ''}
   '';
 
-  blockchain-services-zip = mkArchive { withJS = true; };
+  blockfrost-platform-desktop-zip = mkArchive { withJS = true; };
 
   # This is much smaller, and much quicker to unpack, and very useful
   # if you want to just iteratively test the process manager:
-  blockchain-services-zip-nojs = mkArchive { withJS = false; };
+  blockfrost-platform-desktop-zip-nojs = mkArchive { withJS = false; };
 
   # For easier testing, skipping the installer (for now):
   mkArchive = { withJS }: let
@@ -243,12 +249,12 @@ in rec {
       if inputs.self ? shortRev
       then builtins.substring 0 9 inputs.self.rev
       else "dirty";
-  in pkgs.runCommand "blockchain-services.7z" {} ''
+  in pkgs.runCommand "blockfrost-platform-desktop.7z" {} ''
     mkdir -p $out
-    target=$out/blockchain-services-${common.ourVersion}-${revShort}-${targetSystem}.7z
+    target=$out/blockfrost-platform-desktop-${common.ourVersion}-${revShort}-${targetSystem}.7z
 
-    ln -s ${mkPackage { inherit withJS; }} blockchain-services
-    ${with pkgs; lib.getExe p7zip} a -r -l $target blockchain-services
+    ln -s ${mkPackage { inherit withJS; }} blockfrost-platform-desktop
+    ${with pkgs; lib.getExe p7zip} a -r -l $target blockfrost-platform-desktop
 
     # Make it downloadable from Hydra:
     mkdir -p $out/nix-support
@@ -330,8 +336,8 @@ in rec {
       --out-name "installer.exe" \
       --icon-path icon.ico \
       --banner-bmp banner.bmp \
-      --lock-file '$APPDATA\blockchain-services\instance.lock' \
-      --shortcut-exe "blockchain-services.exe" \
+      --lock-file '$APPDATA\blockfrost-platform-desktop\instance.lock' \
+      --shortcut-exe "blockfrost-platform-desktop.exe" \
       --contents-dir 'contents\*' \
       ${lib.escapeShellArgs (lib.concatMap (wspace: [
         "--extra-exec"
@@ -369,7 +375,7 @@ in rec {
     makensis installer.nsi -V4
 
     mkdir -p $out
-    target=$out/blockchain-services-${common.ourVersion}-${revShort}-${targetSystem}.exe
+    target=$out/blockfrost-platform-desktop-${common.ourVersion}-${revShort}-${targetSystem}.exe
 
     mv installer.exe "$target"
 

@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"iog.io/blockchain-services/constants"
-	"iog.io/blockchain-services/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/constants"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
 )
 
 func childProjector(shared SharedState, statusCh chan<- StatusAndUrl) ManagedChild {

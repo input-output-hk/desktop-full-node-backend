@@ -8,9 +8,11 @@ in rec {
 
   flake-compat = import inputs.flake-compat;
 
-  prettyName = "Blockchain Services";
+  prettyName = "Blockfrost Platform Desktop";
 
   ourVersion = "0.1.0";
+
+  blockfrostPlatformOnly = true;
 
   # These are configs of ‘cardano-node’ for all networks we make available from the UI.
   # The patching of the official networks needs to happen to:
@@ -26,6 +28,8 @@ in rec {
   '') selectedNetworks);
 
   cardanoNodeFlake = (flake-compat { src = inputs.cardano-node; }).defaultNix;
+
+  blockfrostPlatformFlake = (flake-compat { src = inputs.blockfrost-platform; }).defaultNix;
 
   ogmiosPatched = {
     outPath = toString (pkgs.runCommand "ogmios-patched" {} ''
@@ -69,6 +73,11 @@ in rec {
     aarch64-darwin = ogmiosProject.hsPkgs.ogmios.components.exes.ogmios;
   }.${targetSystem};
 
+  blockfrost-platform =
+    blockfrostPlatformFlake.internal.${targetSystem}.bundle // {
+      inherit (blockfrostPlatformFlake.internal.${targetSystem}.package) version;
+    };
+
   cardano-node = {
     x86_64-linux = cardanoNodeFlake.hydraJobs.x86_64-linux.musl.cardano-node;
     x86_64-windows = cardanoNodeFlake.hydraJobs.x86_64-linux.windows.cardano-node;
@@ -95,16 +104,19 @@ in rec {
     }) // { inherit version; };
   }.${targetSystem};
 
-  blockchain-services-exe-vendorHash = "sha256-3mz58RaOQvbZbTMCDwXTmIWUqMqpPlzy8222kvm9SOU=";
+  blockfrost-platform-desktop-exe-vendorHash = "sha256-3mz58RaOQvbZbTMCDwXTmIWUqMqpPlzy8222kvm9SOU=";
 
   go-constants = pkgs.writeTextDir "constants/constants.go" ''
     package constants
 
     const (
-      BlockchainServicesVersion = ${__toJSON ourVersion}
-      BlockchainServicesRevision = ${__toJSON (inputs.self.rev or "dirty")}
+      BlockfrostPlatformDesktopVersion = ${__toJSON ourVersion}
+      BlockfrostPlatformDesktopRevision = ${__toJSON (inputs.self.rev or "dirty")}
       CardanoNodeVersion = ${__toJSON cardanoNodeFlake.project.${buildSystem}.hsPkgs.cardano-node.identifier.version}
       CardanoNodeRevision = ${__toJSON inputs.cardano-node.rev}
+      BlockfrostPlatformOnly = ${__toJSON blockfrostPlatformOnly}
+      BlockfrostPlatformVersion = ${__toJSON blockfrost-platform.version}
+      BlockfrostPlatformRevision = ${__toJSON inputs.blockfrost-platform.rev}
       OgmiosVersion = ${__toJSON ogmios.version}
       OgmiosRevision = ${__toJSON inputs.ogmios.rev}
       PostgresVersion = ${__toJSON postgresPackage.version}

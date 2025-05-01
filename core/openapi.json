@@ -169,7 +169,7 @@
       },
       "ServiceName": {
         "type": "string",
-        "enum": ["cardano-node", "ogmios", "provider-server", "blockchain-services"]
+        "enum": ["cardano-node", "ogmios", "provider-server", "blockfrost-platform-desktop"]
       },
       "ServiceStatus": {
         "type": "object",

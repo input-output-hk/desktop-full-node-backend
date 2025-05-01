@@ -11,11 +11,11 @@ import (
 	"bytes"
 	"strconv"
 
-	t "iog.io/blockchain-services/types"
-	"iog.io/blockchain-services/ourpaths" // has to be imported before clipboard.init()
-	"iog.io/blockchain-services/assets"
-	"iog.io/blockchain-services/appconfig"
-	"iog.io/blockchain-services/mainthread"
+	t "blockfrost.io/blockfrost-platform-desktop/types"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths" // has to be imported before clipboard.init()
+	"blockfrost.io/blockfrost-platform-desktop/assets"
+	"blockfrost.io/blockfrost-platform-desktop/appconfig"
+	"blockfrost.io/blockfrost-platform-desktop/mainthread"
 
 	"github.com/getlantern/systray"
 	"github.com/atotto/clipboard"
@@ -100,8 +100,10 @@ func SetupTray(
 	fixme_CardanoNodeStatus := make(chan string)
 	fixme_CardanoSubmitApiStatus := make(chan string)
 	fixme_OgmiosStatus := make(chan string)
+	fixme_BlockfrostPlatformStatus := make(chan string)
 	fixme_PostgresStatus := make(chan string)
 	fixme_SetOgmiosDashboard := make(chan string)
+	fixme_SetBlockfrostPlatformUrl := make(chan string)
 	fixme_SetCardanoSubmitApiUrl := make(chan string)
 	fixme_ProviderServerStatus := make(chan string)
 	fixme_ProjectorStatus := make(chan string)
@@ -123,6 +125,9 @@ func SetupTray(
 			case "ogmios":
 				fixme_OgmiosStatus <- formatted
 				fixme_SetOgmiosDashboard <- upd.Url
+			case "blockfrost-platform":
+				fixme_BlockfrostPlatformStatus <- formatted
+				fixme_SetBlockfrostPlatformUrl <- upd.Url
 			case "postgres":
 				fixme_PostgresStatus <- formatted
 			case "provider-server":
@@ -149,7 +154,9 @@ func SetupTray(
 		}
 	}()
 
+	/*
 	mCopyCardanoSubmitApiUrl := systray.AddMenuItem("Copy Cardano Submit API URL", "")
+	mCopyCardanoSubmitApiUrl.Hide()
 	go func() {
 		url := ""
 		mCopyCardanoSubmitApiUrl.Disable()
@@ -168,17 +175,39 @@ func SetupTray(
 			}
 		}}
 	}()
+	*/
+
+	mCopyBlockfrostPlatformUrl := systray.AddMenuItem("Copy Blockfrost platform URL", "")
+	go func() {
+		url := ""
+		mCopyBlockfrostPlatformUrl.Disable()
+		for { select {
+		case <-mCopyBlockfrostPlatformUrl.ClickedCh:
+			err := clipboard.WriteAll(url)
+			if err != nil {
+				fmt.Printf("%s[%d]: error: failed to copy '%s' to clipboard: %s\n",
+					OurLogPrefix, os.Getpid(), url, err)
+			}
+		case url = <-fixme_SetBlockfrostPlatformUrl:
+			if url == "" {
+				mCopyBlockfrostPlatformUrl.Disable()
+			} else {
+				mCopyBlockfrostPlatformUrl.Enable()
+			}
+		}}
+	}()
 
 	systray.AddSeparator()
 
 	// XXX: this weird type because we want order, and there are no tuples:
 	statuses := []map[string](<-chan string) {
 		{ "cardano-node":       fixme_CardanoNodeStatus },
-		{ "ogmios":             fixme_OgmiosStatus },
-		{ "cardano-submit-api": fixme_CardanoSubmitApiStatus },
-		{ "postgres":           fixme_PostgresStatus },
-		{ "provider-server":    fixme_ProviderServerStatus },
-		{ "projector":          fixme_ProjectorStatus },
+		// { "ogmios":             fixme_OgmiosStatus },
+		{ "blockfrost-platform":fixme_BlockfrostPlatformStatus },
+		// { "cardano-submit-api": fixme_CardanoSubmitApiStatus },
+		// { "postgres":           fixme_PostgresStatus },
+		// { "provider-server":    fixme_ProviderServerStatus },
+		// { "projector":          fixme_ProjectorStatus },
 	}
 
 	for _, statusItem := range statuses {
@@ -281,6 +310,7 @@ func SetupTray(
 		}
 	}()
 
+	/*
 	mOgmiosDashboard := systray.AddMenuItem("Ogmios Dashboard", "")
 	go func() {
 		url := ""
@@ -297,6 +327,7 @@ func SetupTray(
 			}
 		}}
 	}()
+	*/
 
 	systray.AddSeparator()
 

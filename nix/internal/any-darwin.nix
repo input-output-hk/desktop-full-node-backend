@@ -7,9 +7,9 @@ let
   inherit (pkgs) lib;
 in rec {
   common = import ./common.nix { inherit inputs targetSystem; };
-  package = blockchain-services;
+  package = blockfrost-platform-desktop;
   installer = dmgImage;
-  inherit (common) cardano-node ogmios cardano-submit-api;
+  inherit (common) cardano-node ogmios cardano-submit-api blockfrost-platform;
 
   cardano-js-sdk = rec {
     patchedSrc = pkgs.runCommand "cardano-js-sdk-patched" {} ''
@@ -167,10 +167,10 @@ in rec {
     '';
   };
 
-  blockchain-services-exe = pkgs.buildGoModule rec {
-    name = "blockchain-services";
+  blockfrost-platform-desktop-exe = pkgs.buildGoModule rec {
+    name = "blockfrost-platform-desktop";
     src = common.coreSrc;
-    vendorHash = common.blockchain-services-exe-vendorHash;
+    vendorHash = common.blockfrost-platform-desktop-exe-vendorHash;
     buildInputs =
       (with pkgs; [ ])
       ++ (with pkgs.darwin.apple_sdk_11_0.frameworks; [ Cocoa WebKit UniformTypeIdentifiers ]);
@@ -215,9 +215,9 @@ in rec {
         <key>CFBundleDevelopmentRegion</key>
         <string>en</string>
         <key>CFBundleExecutable</key>
-        <string>blockchain-services</string>
+        <string>blockfrost-platform-desktop</string>
         <key>CFBundleIdentifier</key>
-        <string>io.lace.blockchain-services</string>
+        <string>io.blockfrost.blockfrost-platform-desktop</string>
         <key>CFBundleName</key>
         <string>${common.prettyName}</string>
         <key>CFBundleDisplayName</key>
@@ -260,8 +260,8 @@ in rec {
     "cardano-submit-api" = lib.getExe cardano-submit-api;
   };
 
-  blockchain-services = pkgs.runCommand "blockchain-services" {
-    meta.mainProgram = blockchain-services-exe.name;
+  blockfrost-platform-desktop = pkgs.runCommand "blockfrost-platform-desktop" {
+    meta.mainProgram = blockfrost-platform-desktop-exe.name;
   } ''
     app=$out/Applications/${lib.escapeShellArg common.prettyName}.app/Contents
     mkdir -p "$app"/MacOS
@@ -269,18 +269,22 @@ in rec {
 
     ln -s ${infoPlist} "$app"/Info.plist
 
-    cp ${blockchain-services-exe}/bin/* "$app"/MacOS/
+    cp ${blockfrost-platform-desktop-exe}/bin/* "$app"/MacOS/
     mkdir -p $out/bin/
-    ln -s "$app"/MacOS/blockchain-services $out/bin/
+    ln -s "$app"/MacOS/blockfrost-platform-desktop $out/bin/
 
     ln -s ${cardano-node-bundle} "$app"/MacOS/cardano-node
 
-    ln -s ${mkBundle { "ogmios"         = lib.getExe ogmios;                }} "$app"/MacOS/ogmios
+    ln -s ${blockfrost-platform                                             }/libexec "$app"/MacOS/blockfrost-platform
     ln -s ${mkBundle { "mithril-client" = lib.getExe mithril-client;        }} "$app"/MacOS/mithril-client
-    ln -s ${mkBundle { "node"           = lib.getExe cardano-js-sdk.ourPackage.nodejs; }} "$app"/MacOS/nodejs
-    ln -s ${postgresBundle                                                   } "$app"/MacOS/postgres
 
-    ln -s ${cardano-js-sdk.ourPackage} "$app"/Resources/cardano-js-sdk
+    ${lib.optionalString (!common.blockfrostPlatformOnly) ''
+      ln -s ${mkBundle { "ogmios"         = lib.getExe ogmios;                }} "$app"/MacOS/ogmios
+      ln -s ${mkBundle { "node"           = lib.getExe cardano-js-sdk.ourPackage.nodejs; }} "$app"/MacOS/nodejs
+      ln -s ${postgresBundle                                                   } "$app"/MacOS/postgres
+      ln -s ${cardano-js-sdk.ourPackage} "$app"/Resources/cardano-js-sdk
+    ''}
+
     ln -s ${common.networkConfigs} "$app"/Resources/cardano-node-config
     ln -s ${common.swagger-ui} "$app"/Resources/swagger-ui
     ln -s ${ui.dist} "$app"/Resources/ui
@@ -378,19 +382,19 @@ in rec {
   });
 
   # XXX: this has no dependency on /nix/store on the target machine
-  blockchain-services-bundle = let
-    unbundled = blockchain-services;
-  in pkgs.runCommand "blockchain-services-bundle" {
-    meta.mainProgram = blockchain-services-exe.name;
+  blockfrost-platform-desktop-bundle = let
+    unbundled = blockfrost-platform-desktop;
+  in pkgs.runCommand "blockfrost-platform-desktop-bundle" {
+    meta.mainProgram = blockfrost-platform-desktop-exe.name;
   } ''
     mkdir -p $out/{Applications,bin}
     cp -r --dereference ${unbundled}/Applications/${lib.escapeShellArg common.prettyName}.app $out/Applications/
 
     chmod -R +w $out
-    rm $out/Applications/${lib.escapeShellArg common.prettyName}.app/Contents/MacOS/blockchain-services
-    cp -r --dereference ${mkBundle { "blockchain-services" = "${unbundled}/Applications/${common.prettyName}.app/Contents/MacOS/blockchain-services"; }}/. $out/Applications/${lib.escapeShellArg common.prettyName}.app/Contents/MacOS/.
+    rm $out/Applications/${lib.escapeShellArg common.prettyName}.app/Contents/MacOS/blockfrost-platform-desktop
+    cp -r --dereference ${mkBundle { "blockfrost-platform-desktop" = "${unbundled}/Applications/${common.prettyName}.app/Contents/MacOS/blockfrost-platform-desktop"; }}/. $out/Applications/${lib.escapeShellArg common.prettyName}.app/Contents/MacOS/.
 
-    ln -s $out/Applications/${lib.escapeShellArg common.prettyName}.app/Contents/MacOS/blockchain-services $out/bin/
+    ln -s $out/Applications/${lib.escapeShellArg common.prettyName}.app/Contents/MacOS/blockfrost-platform-desktop $out/bin/
   '';
 
   hfsprogs = pkgs.hfsprogs.overrideAttrs (drv: {
@@ -434,12 +438,12 @@ in rec {
       if inputs.self ? shortRev
       then builtins.substring 0 9 inputs.self.rev
       else "dirty";
-  in pkgs.runCommand "blockchain-services-dmg" {} ''
+  in pkgs.runCommand "blockfrost-platform-desktop-dmg" {} ''
     mkdir -p $out
-    target=$out/blockchain-services-${common.ourVersion}-${revShort}-${targetSystem}.dmg
+    target=$out/blockfrost-platform-desktop-${common.ourVersion}-${revShort}-${targetSystem}.dmg
 
     /usr/bin/hdiutil makehybrid -iso -joliet -o tmp.iso \
-      ${blockchain-services-bundle}/Applications
+      ${blockfrost-platform-desktop-bundle}/Applications
 
     echo 'Converting ISO to DMG…'
     ${libdmg-hfsplus}/bin/dmg tmp.iso $target
@@ -673,12 +677,12 @@ in rec {
 
       # license = { … }
     '';
-  in pkgs.runCommand "blockchain-services-dmg" {} ''
+  in pkgs.runCommand "blockfrost-platform-desktop-dmg" {} ''
     mkdir -p $out
-    target=$out/blockchain-services-${common.ourVersion}-${revShort}-${targetSystem}.dmg
+    target=$out/blockfrost-platform-desktop-${common.ourVersion}-${revShort}-${targetSystem}.dmg
 
     ${dmgbuild}/bin/dmgbuild \
-      -D app_path=${blockchain-services-bundle}/Applications/${lib.escapeShellArg common.prettyName}.app \
+      -D app_path=${blockfrost-platform-desktop-bundle}/Applications/${lib.escapeShellArg common.prettyName}.app \
       -D icon_path=${badgeIcon} \
       -s ${settingsPy} \
       ${lib.escapeShellArg common.prettyName} $target

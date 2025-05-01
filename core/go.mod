@@ -1,4 +1,4 @@
-module iog.io/blockchain-services
+module blockfrost.io/blockfrost-platform-desktop
 
 go 1.22.6
 

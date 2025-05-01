@@ -10,8 +10,8 @@ import (
 	"strings"
 	"regexp"
 
-	"iog.io/blockchain-services/ourpaths"
-	"iog.io/blockchain-services/constants"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/constants"
 
 	"github.com/acarl005/stripansi"
 )

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"path/filepath"
 
-	"iog.io/blockchain-services/ourpaths"
-	"iog.io/blockchain-services/appconfig"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/appconfig"
 )
 
 const (

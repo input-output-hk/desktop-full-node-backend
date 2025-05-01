@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	OurLogPrefix = "blockchain-services"
+	OurLogPrefix = "blockfrost-platform-desktop"
 )
 
 var (
@@ -45,15 +45,15 @@ func init() {
 
 	switch runtime.GOOS {
 	case "darwin":
-		WorkDir = currentUser.HomeDir + "/Library/Application Support/blockchain-services"
+		WorkDir = currentUser.HomeDir + "/Library/Application Support/blockfrost-platform-desktop"
 		LibexecDir = binDir
 		ResourcesDir = filepath.Clean(binDir + "/../Resources")
 	case "linux":
-		WorkDir = currentUser.HomeDir + "/.local/share/blockchain-services"
+		WorkDir = currentUser.HomeDir + "/.local/share/blockfrost-platform-desktop"
 		LibexecDir = filepath.Clean(binDir + "/../../libexec")
 		ResourcesDir = filepath.Clean(binDir + "/../../share")
 	case "windows":
-		WorkDir = os.Getenv("AppData") + "\\blockchain-services"
+		WorkDir = os.Getenv("AppData") + "\\blockfrost-platform-desktop"
 		LibexecDir = filepath.Clean(binDir + "\\libexec")
 		ResourcesDir = binDir
 	default:

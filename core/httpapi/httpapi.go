@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	t "iog.io/blockchain-services/types"
-	"iog.io/blockchain-services/ourpaths"
-	"iog.io/blockchain-services/assets"
-	"iog.io/blockchain-services/appconfig"
+	t "blockfrost.io/blockfrost-platform-desktop/types"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/assets"
+	"blockfrost.io/blockfrost-platform-desktop/appconfig"
 
 	"github.com/gorilla/websocket"
 )

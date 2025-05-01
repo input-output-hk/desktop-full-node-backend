@@ -12,9 +12,10 @@ import (
 	"strings"
 	"time"
 
-	t "iog.io/blockchain-services/types"
-	"iog.io/blockchain-services/ourpaths"
-	"iog.io/blockchain-services/appconfig"
+	t "blockfrost.io/blockfrost-platform-desktop/types"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/appconfig"
+	"blockfrost.io/blockfrost-platform-desktop/constants"
 
 	"github.com/creack/pty"
 	"github.com/acarl005/stripansi"
@@ -62,6 +63,7 @@ type SharedState struct {
 	CardanoNodeSocket string
 	CardanoSubmitApiPort *int
 	OgmiosPort *int
+	BlockfrostPlatformPort *int
 	PostgresPort *int
 	PostgresPassword *string
 	MithrilCachePort int
@@ -109,6 +111,7 @@ func manageChildren(comm CommChannels_Manager, appConfig appconfig.AppConfig, mi
 			CardanoNodeSocket: ourpaths.WorkDir + sep + network + sep + "node.sock",
 			CardanoSubmitApiPort: new(int),
 			OgmiosPort: new(int),
+			BlockfrostPlatformPort: new(int),
 			PostgresPort: new(int),
 			PostgresPassword: new(string),
 			MithrilCachePort: mithrilCachePort,
@@ -133,12 +136,15 @@ func manageChildren(comm CommChannels_Manager, appConfig appconfig.AppConfig, mi
 
 		if !runMithril {
 			usedChildren = append(usedChildren, childCardanoNode)
-			usedChildren = append(usedChildren, childOgmios(ogmiosSyncProgressCh))
-			usedChildren = append(usedChildren, childCardanoSubmitApi(appConfig))
-			usedChildren = append(usedChildren, childPostgres)
-			if cardanoServicesAvailable {
-				usedChildren = append(usedChildren, childProviderServer)
-				usedChildren = append(usedChildren, childProjector)
+			usedChildren = append(usedChildren, childBlockfrostPlatform(ogmiosSyncProgressCh))
+			if !constants.BlockfrostPlatformOnly {
+				usedChildren = append(usedChildren, childOgmios(ogmiosSyncProgressCh))
+				usedChildren = append(usedChildren, childCardanoSubmitApi(appConfig))
+				usedChildren = append(usedChildren, childPostgres)
+				if cardanoServicesAvailable {
+					usedChildren = append(usedChildren, childProviderServer)
+					usedChildren = append(usedChildren, childProjector)
+				}
 			}
 		} else {
 			usedChildren = append(usedChildren, childMithril(appConfig))

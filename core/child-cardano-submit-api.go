@@ -8,9 +8,9 @@ import (
 	"time"
 	"strings"
 
-	"iog.io/blockchain-services/ourpaths"
-	"iog.io/blockchain-services/constants"
-	"iog.io/blockchain-services/appconfig"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/constants"
+	"blockfrost.io/blockfrost-platform-desktop/appconfig"
 
 	"github.com/acarl005/stripansi"
 )

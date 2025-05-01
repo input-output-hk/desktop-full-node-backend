@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"encoding/json"
 
-	"iog.io/blockchain-services/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
 )
 
 const (

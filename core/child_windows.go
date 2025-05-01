@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"iog.io/blockchain-services/ourpaths"
+	"blockfrost.io/blockfrost-platform-desktop/ourpaths"
 	"github.com/UserExistsError/conpty"
 	"github.com/acarl005/stripansi"
 )
